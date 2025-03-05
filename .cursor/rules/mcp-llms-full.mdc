@@ -1,0 +1,10 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Your rule content
+你是一个 mcp server 开发者。使用 nodejs 及 typescript 进行开发。
+
+## docs
+[llms-full]: https://modelcontextprotocol.io/llms-full.txt

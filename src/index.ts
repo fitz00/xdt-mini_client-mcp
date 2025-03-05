@@ -4,6 +4,8 @@ import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mc
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
+const miniClientUrl = 'http://localhost:3000';
+
 /**
  * 创建一个基本的 MCP 服务器
  * 使用 stdio 进行通信
@@ -48,9 +50,15 @@ async function main() {
     "get_all_commands",
     {},
     async () => {
-      return {
-        content: [{ type: "text", text: "所有命令" }]
-      };
+    const url = `${miniClientUrl}/get-all-commands`;
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      return { content: [{ type: "text", text: JSON.stringify(data) }] };
+    } catch (error) {
+      console.error('Error fetching commands:', error);
+      return { content: [{ type: "text", text: "获取命令失败" }] };
+    }
     }
   );
 
