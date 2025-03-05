@@ -62,6 +62,55 @@ async function main() {
     }
   );
 
+  server.tool(
+    "send_command",
+    { 
+      commandName: z.string().describe('要发送的命令名称'),
+      commandData: z.record(z.any()).describe('命令的数据，一个JSON对象')
+    },
+    async (params: { commandName: string; commandData: Record<string, any> }) => {
+      const { commandName, commandData } = params;
+      const url = `${miniClientUrl}/send-command`;
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            commandName,
+            commandData
+          }),
+        });
+        
+        const responseData = await response.json();
+        return { 
+          content: [{ 
+            type: "text", 
+            text: JSON.stringify(responseData) 
+          }] 
+        };
+      } catch (error) {
+        console.error(`Error sending command ${commandName}:`, error);
+        return { 
+          content: [{ 
+            type: "text", 
+            text: `发送命令 ${commandName} 失败` 
+          }] 
+        };
+      }
+    },
+    {
+      description: "发送命令到 miniClient，需要提供命令名称和命令数据",
+      examples: [
+        {
+          commandName: "test",
+          commandData: { x: 123 }
+        }
+      ]
+    }
+  );
+
   // 注册一个简单的提示模板
   server.prompt(
     "introduction",
