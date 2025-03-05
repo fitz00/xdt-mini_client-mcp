@@ -8,3 +8,4 @@ alwaysApply: false
 
 ## docs
 [llms-full]: https://modelcontextprotocol.io/llms-full.txt
+[ts-sdk]: https://github.com/modelcontextprotocol/typescript-sdk/blob/main/README.md
