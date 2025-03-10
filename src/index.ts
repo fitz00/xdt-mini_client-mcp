@@ -4,7 +4,8 @@ import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mc
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-const miniClientUrl = 'http://localhost:3000';
+const miniClientUrl = 'http://localhost:5039';
+const networkCommandUrl = `${miniClientUrl}/api/NetworkCommand`;
 
 /**
  * 创建一个基本的 MCP 服务器
@@ -50,7 +51,7 @@ async function main() {
     "get_all_commands",
     {},
     async () => {
-    const url = `${miniClientUrl}/get-all-commands`;
+    const url = `${networkCommandUrl}`;
     try {
       const response = await fetch(url);
       const data = await response.json();
@@ -64,13 +65,11 @@ async function main() {
 
   server.tool(
     "send_command",
-    { 
-      commandName: z.string().describe('要发送的命令名称'),
-      commandData: z.record(z.any()).describe('命令的数据，一个JSON对象')
-    },
+    "发送命令到 miniClient，需要提供命令名称和命令数据",
+    { commandName: z.string().describe('要发送的命令名称'), commandData: z.record(z.any()).describe('命令的数据，一个JSON对象') },
     async (params: { commandName: string; commandData: Record<string, any> }) => {
       const { commandName, commandData } = params;
-      const url = `${miniClientUrl}/send-command`;
+      const url = `${networkCommandUrl}/forwardBotRequest`;
       try {
         const response = await fetch(url, {
           method: 'POST',
@@ -78,37 +77,42 @@ async function main() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ 
-            commandName,
-            commandData
+            BotId: 1,
+            CommandType: commandName,
+            CommandJson: JSON.stringify(commandData)
           }),
         });
+
+        if (!response.ok) {
+          var errMsg = await response.text();
+          return {
+            content: [{
+              type: "text",
+              text: `请求失败: HTTP ${response.status} ${response.statusText}`,
+              error: errMsg
+            }]
+          };
+        }
         
         const responseData = await response.json();
+        const formattedResponse = typeof responseData === 'object' ? JSON.stringify(responseData) : responseData;
         return { 
           content: [{ 
             type: "text", 
-            text: JSON.stringify(responseData) 
+            text: formattedResponse
           }] 
         };
       } catch (error) {
-        console.error(`Error sending command ${commandName}:`, error);
         return { 
           content: [{ 
             type: "text", 
-            text: `发送命令 ${commandName} 失败` 
+            text: `发送命令 ${commandName} 失败`,
+            error: `error: ${error}` ,
+            stack: error instanceof Error ? error.stack : undefined
           }] 
         };
       }
     },
-    {
-      description: "发送命令到 miniClient，需要提供命令名称和命令数据",
-      examples: [
-        {
-          commandName: "test",
-          commandData: { x: 123 }
-        }
-      ]
-    }
   );
 
   // 注册一个简单的提示模板
