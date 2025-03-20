@@ -41,7 +41,7 @@ const logger = winston.createLogger({
   transports: [
     // 每日轮换的日志文件
     new DailyRotateFile({
-      filename: path.join(LOG_DIR, 'mcp-server-%DATE%.log'),
+      filename: path.join(LOG_DIR, 'xdtMiniClient-mcp-server-%DATE%.log'),
       datePattern: 'YYYY-MM-DD',
       maxSize: '20m',
       maxFiles: '14d'

@@ -7,6 +7,7 @@ import logger from './utils/logger';
 import { Database } from './utils/database';
 import { MessageService } from './services/message.service';
 import { ItemService } from './services/item.service';
+import { ItemCategory } from './models/item.model';
 
 const miniClientUrl = 'http://localhost:5039';
 const networkCommandUrl = `${miniClientUrl}/api/NetworkCommand`;
@@ -232,29 +233,44 @@ async function main() {
     }
   );
 
-  // 添加导入背包物品工具
+  // 添加导入游戏物品工具
   server.tool(
-    "import_bag_items",
-    "从JSON文件导入背包物品到数据库",
+    "import_game_items",
+    "从JSON文件导入物品到数据库",
     {
-      filePath: z.string().describe('JSON文件的路径')
+      filePath: z.string().describe('JSON文件的路径'),
+      category: z.number().optional().describe('物品分类 (默认为2:物品, 1:货币, 3:配方, 4:图纸...)'),
+      clearExisting: z.boolean().optional().describe('是否清除该分类下现有物品（默认为true）')
     },
-    async ({ filePath }) => {
+    async ({ filePath, category = ItemCategory.Item, clearExisting = true }) => {
       try {
-        const { importedItems, failedItemIds } = await itemService.importBagItemFromJson(filePath);
+        // 获取分类名称（如果存在）
+        let categoryName = "未知";
+        for (const [key, value] of Object.entries(ItemCategory)) {
+          if (typeof value === 'number' && value === category) {
+            categoryName = key;
+            break;
+          }
+        }
+        
+        const { importedItems, failedItemIds } = await itemService.importItemsFromJson(
+          filePath, 
+          category,
+          clearExisting
+        );
         
         return {
           content: [{
             type: "text",
-            text: `成功导入${importedItems.length}个物品，失败物品ID: ${failedItemIds.join(', ')}`
+            text: `成功导入${importedItems.length}个分类为 ${category}(${categoryName}) 的物品，${failedItemIds.length > 0 ? `失败物品ID: ${failedItemIds.join(', ')}` : '没有失败的物品'}`
           }]
         };
       } catch (error) {
-        logger.error('Error importing bag items:', error);
+        logger.error('Error importing items:', error);
         return {
           content: [{
             type: "text",
-            text: `导入背包物品时发生错误: ${error instanceof Error ? error.message : String(error)}`
+            text: `导入物品时发生错误: ${error instanceof Error ? error.message : String(error)}`
           }]
         };
       }

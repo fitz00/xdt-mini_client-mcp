@@ -135,6 +135,22 @@ export class ItemService {
    * @returns 导入的物品数组和失败的物品ID数组
    */
   async importBagItemFromJson(filePath: string): Promise<{importedItems: IItem[], failedItemIds: number[]}> {
+    // 调用通用导入函数，指定分类为 ItemCategory.Item
+    return this.importItemsFromJson(filePath, ItemCategory.Item);
+  }
+
+  /**
+   * 通用物品导入函数 - 从JSON文件导入指定分类的物品到数据库
+   * @param filePath JSON文件路径
+   * @param category 物品分类
+   * @param clearExisting 是否清除该分类下已有的物品，默认为true
+   * @returns 导入的物品数组和失败的物品ID数组
+   */
+  async importItemsFromJson(
+    filePath: string, 
+    category: number,
+    clearExisting: boolean = true
+  ): Promise<{importedItems: IItem[], failedItemIds: number[]}> {
     try {
       // 检查文件是否存在
       if (!fs.existsSync(filePath)) {
@@ -149,9 +165,11 @@ export class ItemService {
         throw new Error('JSON文件内容必须是物品对象的数组');
       }
       
-      // 先清空 ItemCategory.Item 分类的所有物品
-      const deletedCount = await this.deleteByCategory(ItemCategory.Item);
-      logger.info(`在导入新物品前已删除 ${deletedCount} 个背包物品`);
+      // 如果需要，先清空指定分类的所有物品
+      if (clearExisting) {
+        const deletedCount = await this.deleteByCategory(category);
+        logger.info(`在导入新物品前已删除 ${deletedCount} 个分类为 ${category} 的物品`);
+      }
       
       // 收集失败的物品ID（没有name属性的物品）
       const failedItemIds: number[] = [];
@@ -164,7 +182,8 @@ export class ItemService {
           itemsData.push({
             itemId: item.id,
             name: item.name,
-            category: ItemCategory.Item,
+            category,
+            ...(item.description && { description: item.description }) // 如果有描述则添加
           });
         } else if (item.id) {
           // 记录缺少name属性的物品ID
@@ -176,13 +195,13 @@ export class ItemService {
       });
       
       // 批量创建物品
-      logger.info(`开始导入${itemsData.length}个物品，忽略了${failedItemIds.length}个没有name的物品...`);
+      logger.info(`开始导入${itemsData.length}个分类为 ${category} 的物品，忽略了${failedItemIds.length}个没有name的物品...`);
       const importedItems = await this.createMany(itemsData);
-      logger.info(`成功导入${importedItems.length}个物品`);
+      logger.info(`成功导入${importedItems.length}个分类为 ${category} 的物品`);
       
       return { importedItems, failedItemIds };
     } catch (error) {
-      logger.error('导入物品时出错:', error);
+      logger.error(`导入分类为 ${category} 的物品时出错:`, error);
       throw error;
     }
   }
